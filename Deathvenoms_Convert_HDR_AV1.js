@@ -1,7 +1,7 @@
 /* eslint-disable */
 const details = () => {
     return {
-        id: "Deathvenoms_Convert_HDR_AI1",
+        id: "Deathvenoms_Convert_HDR_AV1",
         Stage: "Pre-processing",
         Name: "Remove letterbox using ffmpeg cropdetect",
         Type: "Video",
