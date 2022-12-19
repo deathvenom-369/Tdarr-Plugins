@@ -6,7 +6,7 @@ const details = () => {
         Name: "Remove letterbox using ffmpeg cropdetect",
         Type: "Video",
         Operation: "Transcode",
-        Description: "Uses ffmpeg's cropdetect filter to determine the average crop size from 4 random locations in the video and transcode the video to remove letterboxing widthout changing the container, bitrate, codec, or downscaling the video.",
+        Description: "Uses ffmpeg's cropdetect filter to determine the average crop size from 4 random locations in the video and transcode the video to remove letterboxes without changing the container, bitrate, codec, or down-scaling the video.",
         Version: "0.22.12",
         Tags: "pre-processing,ffmpeg,cropdetect,letterbox,transcode",
 
@@ -36,7 +36,7 @@ const details = () => {
                         'true',
                     ],
                 },
-                tooltip: `This enables Nvidia Rigaya's NVENC(short for Nvidia Encoder) This allowes HDR with NVENC. this is a seperat installed tool. \n\n `,
+                tooltip: `***** Not Implemented ***** This enables Nvidia Rigaya's NVENC(short for Nvidia Encoder) This allows HDR with NVENC. this is a separate installed tool. \n\n `,
             },
             {
                 name: 'check4letbox',
@@ -49,7 +49,7 @@ const details = () => {
                         'true',
                     ],
                 },
-                tooltip: `This enables this plug in to dettect a letterbox. If one is found it will be removed. \n\n `,
+                tooltip: `This enables this plug in to detect a letterbox. If one is found it will be removed. \n\n `,
             },
             {
                 name: 'use_HDR',
@@ -63,7 +63,7 @@ const details = () => {
                     ],
                 },
                 tooltip: `(DISABLES NVENC ENCODING) This enables this plug will try to maintain HDR. This is a work inprogress. Currently only works \n
-                width static HDR. It's not recomended for automatided setups. Plrobly best to have a seperit library.  \n\n `,
+                width static HDR. It's not recommended for automated setups. Probably best to have a separate library.  \n\n `,
             },
             {
                 name: 'stopHDRfail',
@@ -90,7 +90,7 @@ const details = () => {
                         'Unmanaged',
                     ],
                 },
-                tooltip: `This allows selection of 8bit or 10bit video. Unmanaged leaves this option blank. If HDR is enabled and sucsseful \n,
+                tooltip: `This allows selection of 8bit or 10bit video. Unmanaged leaves this option blank. If HDR is enabled and successful \n,
                 10bit will be used  \n\n`
             },
             {
@@ -159,7 +159,7 @@ const details = () => {
             {
                 name: 'av1_Preset',
                 defaultValue: '6',
-                tooltip: `OPTIONAL PRESET (SIMILER TO SPEED), DEFAULTS TO 6 IF NOT SET 
+                tooltip: `OPTIONAL PRESET (SIMILAR TO SPEED), DEFAULTS TO 6 IF NOT SET 
                 \\n Enter a preset (1-13) you want, leave empty for (6). Lower is slower
                 
                 \\nExample:\\n 
@@ -177,7 +177,7 @@ const details = () => {
             {
                 name: 'av1_fgrain',
                 defaultValue: '0',
-                tooltip: `Strangth of Synthesized Film Grain (0-50) Default 0(off). Seems to have large speed penalty when used.  
+                tooltip: `Strength of Synthesized Film Grain (0-50) Default 0(off). Seems to have large speed penalty when used.  
                 
                 \\nExample:\\n
                 5`,
@@ -185,8 +185,8 @@ const details = () => {
             {
                 name: 'av1_cpuThreads',
                 defaultValue: '1',
-                tooltip: `Set number of CPU threads to use %25 is usaly good so 8 cores is (2). Higher is faster but uses alot of RAM. /n
-                This is more noticable when using lower presets and film grain. (hopfully better width ffmpeg/AV1 updates)                
+                tooltip: `Set number of CPU threads to use %25 is usually good so 8 cores is (2). Higher is faster but uses a lot of RAM. /n
+                This is more noticeable when using lower presets and film grain. (hopefully better width ffmpeg/AV1 updates)                
                  \\nExample:\\n 
                 
                 4`,
@@ -274,7 +274,7 @@ const plugin = (file, librarySettings, inputs, otherArguments) => {
 
     // Letterbox removale
     if (inputs.check4letbox === false) {
-        response.infoLog += 'User did not requset Letterbox removal \n'
+        response.infoLog += 'User did not requests Letterbox removal \n'
     } else {
         response.infoLog += 'Starting Letterbox removal... \n'
 
@@ -377,7 +377,7 @@ const plugin = (file, librarySettings, inputs, otherArguments) => {
             response.infoLog += `☒Letterbox was found but outside of bounds(${cropPW}, ${cropPH}) W:${crop_width} H:${crop_height} X:${crop_x_median} Y:${crop_y_median}. \n Skipping Crop! \n`
         } else {
 
-            response.infoLog += `☑No Letterbox found. - Not croping. \n`
+            response.infoLog += `☑No Letterbox found. - Not cropping. \n`
         }
     }
     // End of Letterbox removal
@@ -463,7 +463,7 @@ const plugin = (file, librarySettings, inputs, otherArguments) => {
 
     // Decoder detection
     if (inputs.enable_nevnc == true) { //Use NVENC?
-        response.infoLog += 'User requset use of NVENC. Decoder detection... \n'
+        response.infoLog += 'User requests use of NVENC. Decoder detection... \n'
         if (nvencD.includes(file.ffProbeData.streams[0].codec_name)) {
             decoder = ` -c:v ` + file.ffProbeData.streams[0].codec_name + `_cuvid`
             response.infoLog += '☑ Set decoder: ' + file.ffProbeData.streams[0].codec_name + '_cuvid \n'
@@ -471,22 +471,22 @@ const plugin = (file, librarySettings, inputs, otherArguments) => {
             response.infoLog += 'NVENC decoder not found. Decoding width CPU. \n'
         }
     } else {
-        response.infoLog += 'User did not requset use of NVENC. Decoding width CPU. \n'
+        response.infoLog += 'User did not requests use of NVENC. Decoding width CPU. \n'
     }
     //End of Decoder detection
 
 
     //Encoder selection
     if (inputs.enable_nevnc == true && nvencE.includes(inputs.codec_out) && hdrWin == 1) { // Check if the user has requested NVENC, the selected codec is supported, and if HDR is not enabled
-        response.infoLog += 'User requset use of NVENC. Encoder detection... \n'
+        response.infoLog += 'User requests use of NVENC. Encoder detection... \n'
         excom = `${cpri}${ctrc}${cspa} -preset ${inputs.h26x_preset} -cq ${qual} -rc-lookahead 32`
         encoder = ` ${inputs.codec_out}_nvenc`
     } else if( inputs.enable_nevnc == true && inputs.codec_out == 'hevc' && inputs.enable_Rigaya == true) { 
-        response.infoLog += 'User requset use of NVENC.  Ecoder detection... \n HDR NVENC using Rigaya\'s NVENC \n'
+        response.infoLog += 'User requests use of NVENC.  Encoder detection... \n HDR NVENC using Rigaya\'s NVENC \n'
         excom = `${cpri}${ctrc}${cspa} -preset:v ${inputs.h26x_preset} --master-display "${masDC}  -cqp ${qual}`
         encoder = ` ${inputs.codec_out}_rigaya`
 }else {
-        response.infoLog += 'NVENC encoder not requseted or not found. Encoding width CPU \n'
+        response.infoLog += 'NVENC encoder not requested or not found. Encoding width CPU \n'
         if (inputs.codec_out === 'av1') {
             excom = `${cpri}${ctrc}${cspa} -strict experimental -preset ${inputs.av1_Preset} -svtav1-params \"lp=${inputs.av1_cpuThreads}:tune=0:film-grain=${inputs.av1_fgrain}:scd=1${masDC}\" -qp ${qual}`
             encoder = ` libsvtav1`
@@ -568,7 +568,7 @@ const plugin = (file, librarySettings, inputs, otherArguments) => {
         response.preset = `<io>${decoder}${map} -c:v${encoder} -b:v 0${pixBit}${cropSet}${excom} -map_metadata 0 -a53cc 0 -c:a copy${subcli}${maxmux}`
         // Remove old crop data
         if (fs.existsSync(`${cropfile}`)) {
-            response.infoLog += `Clearing temperary crop file.... \n `;
+            response.infoLog += `Clearing temporary crop file.... \n `;
             fs.unlinkSync(`${cropfile}`)
 
         }
