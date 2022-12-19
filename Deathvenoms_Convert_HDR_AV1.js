@@ -33,7 +33,7 @@ const details = () => {
                     type: 'dropdown',
                     options: [
                         'false',
-                        'true',
+                        //'true',
                     ],
                 },
                 tooltip: `***** Not Implemented ***** This enables Nvidia Rigaya's NVENC(short for Nvidia Encoder) This allows HDR with NVENC. this is a separate installed tool. \n\n `,
