@@ -7,7 +7,7 @@ const details = () => {
         Type: "Video",
         Operation: "Transcode",
         Description: "Uses ffmpeg's cropdetect filter to determine the average crop size from 4 random locations in the video and transcode the video to remove letterboxes without changing the container, bitrate, codec, or down-scaling the video.",
-        Version: "0.22.12",
+        Version: "0.23.1.1",
         Tags: "pre-processing,ffmpeg,cropdetect,letterbox,transcode",
 
         Inputs: [
@@ -206,7 +206,6 @@ const plugin = (file, librarySettings, inputs, otherArguments) => {
         container: '.mkv',
         handBrakeMode: false,
         FFmpegMode: true,
-        reQueueAfter: true,
         infoLog: "",
     }
     var transcode = 0
@@ -235,8 +234,9 @@ const plugin = (file, librarySettings, inputs, otherArguments) => {
     var cropSet = ''
     var source = (file.meta.SourceFile) //source file
     var dir = (file.meta.Directory) //source directory
-    var sourcename = file.meta.FileName.substring(0, file.meta.FileName.lastIndexOf(".")) //filename widthout extension
+    var sourcename = file.meta.FileName.substring(0, file.meta.FileName.lastIndexOf(".")).replace(/[^\w\s]/gi, '') //filename without extension
     var cropfile = `${dir}/${sourcename}_cd.txt` //location and name of the crop file
+    //var ffpfile = `${dir}/${sourcename}_ffp.txt`
 
     // Check if file is a video. If it isn't then exit plugin.
     if (file.fileMedium !== "video") {
@@ -255,7 +255,7 @@ const plugin = (file, librarySettings, inputs, otherArguments) => {
         fs.unlinkSync(`${cropfile}`)
     }
 
-    //Resiloution detection
+    //Resolution detection
     if ((sdRes).includes == file.video_resolution) {
         qual = `${inputs.sd_Quality}`
     }
@@ -268,11 +268,15 @@ const plugin = (file, librarySettings, inputs, otherArguments) => {
     if (file.video_resolution == '4KUHD') {
         qual = `${inputs.uhd_Quality}`
     }
-    //End of Resiloution detection
+    //End of resolution detection
 
+    //For Testing
+    /*var ffp = otherArguments.ffmpegPath.split(".");
+    if (ffp[2] !== undefined) {
+        fs.writeFileSync(ffpfile, 'test' + ffp[2]);
+    }*/
 
-
-    // Letterbox removale
+    // Letterbox removal
     if (inputs.check4letbox === false) {
         response.infoLog += 'User did not requests Letterbox removal \n'
     } else {
@@ -370,9 +374,10 @@ const plugin = (file, librarySettings, inputs, otherArguments) => {
         crop_x_median = Math.round(crop_x_median / 2) * 2;
         crop_y_median = Math.round(crop_y_median / 2) * 2;
 
-        if ((crop_width != 0 || crop_height != 0) && (crop_width >= cropPW && crop_height >= cropPH)) {
+        if ((crop_width != 0 || crop_height != 0) && ((crop_width >= cropPW && crop_height > cropPH) || (crop_width > cropPW && crop_height >= cropPH))) {
             cropSet = ` -vf \"crop=${crop_width}:${crop_height}:${crop_x_median}:${crop_y_median}\"`
             response.infoLog += `☑Crop Settings: W:${crop_width} H:${crop_height} X:${crop_x_median} Y:${crop_y_median} \n`
+            transcode = 1
         } else if (crop_height != 0 || crop_width != 0) {
             response.infoLog += `☒Letterbox was found but outside of bounds(${cropPW}, ${cropPH}) W:${crop_width} H:${crop_height} X:${crop_x_median} Y:${crop_y_median}. \n Skipping Crop! \n`
         } else {
@@ -388,21 +393,21 @@ const plugin = (file, librarySettings, inputs, otherArguments) => {
     if (inputs.use_HDR === true) {
         response.infoLog += `Running HDR detection.\n`
         // Primaries
-        if (file.ffProbeData.streams[0].color_primaries !== '') {
+        if (file.ffProbeData.streams[0].color_primaries !== undefined) {
             cpri = ` -color_primaries ` + file.ffProbeData.streams[0].color_primaries
         } else {
             response.infoLog += `HDR detection. Failed (Primaries) \n`
             hdrWin = 1
         }
         // Transfer
-        if (file.ffProbeData.streams[0].color_transfer !== '') {
+        if (file.ffProbeData.streams[0].color_transfer !== undefined) {
             ctrc = ` -color_trc ` + file.ffProbeData.streams[0].color_transfer
         } else {
             response.infoLog += `HDR detection. Failed (Transfer) \n`
             hdrWin = 1
         }
         // Color Space
-        if (file.ffProbeData.streams[0].color_space !== '') {
+        if (file.ffProbeData.streams[0].color_space !== undefined) {
             cspa = ` -colorspace ` + file.ffProbeData.streams[0].color_space
         } else {
             response.infoLog += `HDR detection. Failed (Color Space) \n`
@@ -481,11 +486,11 @@ const plugin = (file, librarySettings, inputs, otherArguments) => {
         response.infoLog += 'User requests use of NVENC. Encoder detection... \n'
         excom = `${cpri}${ctrc}${cspa} -preset ${inputs.h26x_preset} -cq ${qual} -rc-lookahead 32`
         encoder = ` ${inputs.codec_out}_nvenc`
-    } else if( inputs.enable_nevnc == true && inputs.codec_out == 'hevc' && inputs.enable_Rigaya == true) { 
+    } else if (inputs.enable_nevnc == true && inputs.codec_out == 'hevc' && inputs.enable_Rigaya == true) {
         response.infoLog += 'User requests use of NVENC.  Encoder detection... \n HDR NVENC using Rigaya\'s NVENC \n'
         excom = `${cpri}${ctrc}${cspa} -preset:v ${inputs.h26x_preset} --master-display "${masDC}  -cqp ${qual}`
         encoder = ` ${inputs.codec_out}_rigaya`
-}else {
+    } else {
         response.infoLog += 'NVENC encoder not requested or not found. Encoding width CPU \n'
         if (inputs.codec_out === 'av1') {
             excom = `${cpri}${ctrc}${cspa} -strict experimental -preset ${inputs.av1_Preset} -svtav1-params \"lp=${inputs.av1_cpuThreads}:tune=0:film-grain=${inputs.av1_fgrain}:scd=1${masDC}\" -qp ${qual}`
@@ -561,7 +566,6 @@ const plugin = (file, librarySettings, inputs, otherArguments) => {
     if (transcode == 1) {
         response.processFile = true
         response.FFmpegMode = true
-        response.reQueueAfter = true
         response.infoLog += `☑File is ${file.video_resolution}, using a quality value of ` + qual + `.\n`
         response.infoLog += `☑File is not the requested codec and/or Letterbox. \n`
         response.infoLog += `☑File is being transcoded!\n`
