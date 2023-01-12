@@ -470,7 +470,7 @@ const plugin = (file, librarySettings, inputs, otherArguments) => {
     if (inputs.enable_nevnc == true) { //Use NVENC?
         response.infoLog += 'User requests use of NVENC. Decoder detection... \n'
         if (nvencD.includes(file.ffProbeData.streams[0].codec_name)) {
-            decoder = ` -c:v ` + file.ffProbeData.streams[0].codec_name + `_cuvid`
+            decoder = `-c:v ` + file.ffProbeData.streams[0].codec_name + `_cuvid `
             response.infoLog += '☑ Set decoder: ' + file.ffProbeData.streams[0].codec_name + '_cuvid \n'
         } else {
             response.infoLog += 'NVENC decoder not found. Decoding width CPU. \n'
@@ -569,7 +569,7 @@ const plugin = (file, librarySettings, inputs, otherArguments) => {
         response.infoLog += `☑File is ${file.video_resolution}, using a quality value of ` + qual + `.\n`
         response.infoLog += `☑File is not the requested codec and/or Letterbox. \n`
         response.infoLog += `☑File is being transcoded!\n`
-        response.preset = `<io>${decoder}${map} -c:v${encoder} -b:v 0${pixBit}${cropSet}${excom} -map_metadata 0 -a53cc 0 -c:a copy${subcli}${maxmux}`
+        response.preset = `${decoder}<io>${map} -c:v${encoder} -b:v 0${pixBit}${cropSet}${excom} -map_metadata 0 -a53cc 0 -c:a copy${subcli}${maxmux}`
         // Remove old crop data
         if (fs.existsSync(`${cropfile}`)) {
             response.infoLog += `Clearing temporary crop file.... \n `;
