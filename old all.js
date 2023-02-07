@@ -8,9 +8,50 @@ const details = () => {
         Operation: "Transcode",
         Description: "Uses Riqaya QSV_AV1 to convert videos to av1.",
         Version: "0.23.1.1",
-        Tags: 'pre-processing,ffmpeg,video only,nvenc av1,qsv av1,vaapi av1,configurable',
+        Tags: 'pre-processing,ffmpeg,video only,av1,qsv av1,configurable',
 
         Inputs: [
+            {
+                name: 'moreThan1',
+                type: 'boolean',
+                defaultValue: false,
+                inputUI: {
+                    type: 'dropdown',
+                    options: [
+                        'false',
+                        'true',
+                    ],
+                },
+                tooltip: `This enables this plug will try to maintain HDR. This is a work inprogress. Currently only works \n
+                width static HDR. It's not recommended for automated setups. Probably best to have a separate library.  \n\n `,
+            },
+            {
+                name: 'rigayaENC',
+                type: 'string',
+                defaultValue: 'NVEnc',
+                inputUI: {
+                    type: 'dropdown',
+                    options: [
+                        'NVEnc',
+                        'VCEEnc',
+                        'QSVEnc',
+                    ],
+                },
+                tooltip: `Please Choose encoder . \n`,
+            },
+            {
+                name: 'codec',
+                type: 'string',
+                defaultValue: 'av1',
+                inputUI: {
+                    type: 'dropdown',
+                    options: [
+                        'av1',
+                        'hevc',
+                    ],
+                },
+                tooltip: `Please Choose Codec. \n`,
+            },
             {
                 name: 'use_HDR',
                 type: 'boolean',
@@ -54,45 +95,45 @@ const details = () => {
             },
             {
                 name: 'sd_Quality',
-                defaultValue: '20',
-                tooltip: `Specify the Quality value (LA-ICQ) for SD (570p and lower) content. 
+                defaultValue: '18',
+                tooltip: `Specify the Quality value (CQP) for SD (570p and lower) content. 
                  \\nExample:\\n 
                 
                 18`,
             },
             {
                 name: 'hd_Quality',
-                defaultValue: '23',
-                tooltip: `Specify the Quality value (LA-ICQ) for HD (720p) content.  
+                defaultValue: '21',
+                tooltip: `Specify the Quality value (CQP) for HD (720p) content.  
                 
                 \\nExample:\\n
                 21`,
             },
             {
                 name: 'fhd_Quality',
-                defaultValue: '24',
-                tooltip: `Specify the Quality value (LA-ICQ) for FHD (1080p) content.  
+                defaultValue: '23',
+                tooltip: `Specify the Quality value (CQP) for FHD (1080p) content.  
                 
                 \\nExample:\\n
                 23`,
             },
             {
                 name: 'uhd_Quality',
-                defaultValue: '26',
-                tooltip: `Specify the Quality value (LA-ICQ) for (4K/UHD) (2160p and grater) content.  
+                defaultValue: '25',
+                tooltip: `Specify the Quality value (CQP) for (4K/UHD) (2160p and grater) content.  
                 
                 \\nExample:\\n
                 25`,
             },
             {
-                name: 'depth',
-                defaultValue: '60',
-                tooltip: `Specify your  lookahead depth in frames. \n.`,
-            },
-            {
                 name: 'preset',
-                defaultValue: 'best',
+                defaultValue: '',
                 tooltip: `Specify your preset if left blank encoder will use default. \n.  
+                \\nNVEnc: \\n
+                https://github.com/rigaya/NVEnc/blob/master/NVEncC_Options.en.md#-u---preset
+                \\nVCEEnc: \\n
+                https://github.com/rigaya/VCEEnc/blob/master/VCEEncC_Options.en.md#-u---preset \n\n
+                \\nQSVEnc: \\n
                 https://github.com/rigaya/QSVEnc/blob/master/QSVEncC_Options.en.md#-u---quality-string \n`,
             },
         ]
@@ -106,24 +147,38 @@ const plugin = (file, librarySettings, inputs, otherArguments) => {
     const execSync = require("child_process").execSync;
     inputs = lib.loadDefaultValues(inputs, details);
     var masDC = ''
-    var hdrWin = 1
+    var hdrWin = 0
     var contentl = ''
     var sdRes = ["240p", "360p", "480i", "480p", "576p"]
     var qual = ''
+    var qualSet = '--cqp'
     var pixBit = ''
     var cpri = ''
     var ctrc = ''
     var cspa = ''
     var hDRmaxCll = ''
     var hDRmaxFALL = ''
+    var masDC = ''
+    var hpath = otherArguments.handbrakePath
+    var hpathB = `${hpath}` + ".bak"
+    var binPath = hpath.substring(0, hpath.lastIndexOf("/" || "\\"))
+
 
     var response = {
         processFile: false,
         preset: '',
         container: '.mkv',
         handBrakeMode: false,
-        FFmpegMode: true,
+        FFmpegMode: false,
         infoLog: '',
+    }
+
+
+    response.infoLog += `${hpathB} \n`
+    if (inputs.moreThan1 == false) {
+        if ((otherArguments.nodeHardwareType == 'nvenc' || 'qsv' || 'vaapi') && (fs.existsSync(hpathB))) {
+            fs.copyFileSync(hpath + '.bak', hpath)
+        }
     }
 
     // Check if file is a video. If it isn't then exit plugin.
@@ -135,10 +190,12 @@ const plugin = (file, librarySettings, inputs, otherArguments) => {
         response.infoLog += 'Current codec is ' + file.ffProbeData.streams[0].codec_name + ` \n`;
     }
     // Check if codec is correct
-    if ((file.ffProbeData.streams[0].codec_name) !== "av1") {
-        response.infoLog += `New codec will be AV1 \n`;
+    if (((file.ffProbeData.streams[0].codec_name) !== inputs.codec)) {
+        response.infoLog += `New codec will be ${inputs.codec} \n`;
     } else {
-        response.infoLog += `☑File is already AV1 \n`
+        response.infoLog += `☑File is already ${inputs.codec} \n`
+        response.reQueueAfter = true
+        response.processFile = false
         return response;
     }
 
@@ -159,6 +216,43 @@ const plugin = (file, librarySettings, inputs, otherArguments) => {
     //End of resolution detection
 
 
+
+    //Rigaya selection
+    if ((inputs.rigayaENC == 'NVEnc') && (otherArguments.nodeHardwareType == 'nvenc')) {
+        if (inputs.moreThan1 == false) {
+            if (hpath.includes(".exe")) {
+                fs.copyFileSync(binPath + '/NVEncC64.exe', hpath)
+            } else {
+                fs.copyFileSync(`/bin/nvencc`, hpath)
+            }
+        }
+    } else if ((inputs.rigayaENC == 'VCEEnc') && (otherArguments.nodeHardwareType == 'vaapi')) {
+        if (inputs.moreThan1 == false) {
+            if (hpath.includes(".exe")) {
+                fs.copyFileSync(binPath + '/VCEEncC64.exe', hpath)
+            } else {
+                fs.copyFileSync(`/bin/vceencc`, hpath)
+            }
+        }
+    } else if ((inputs.rigayaENC == 'QSVEnc') && (otherArguments.nodeHardwareType == 'qsv')) {
+        qualSet = '--icq'
+        if (inputs.moreThan1 == false) {
+            if (hpath.includes(".exe")) {
+                fs.copyFileSync(binPath + '/QSVEncC64.exe', hpath)
+            } else {
+                fs.copyFileSync(`/bin/qsvencc`, hpath)
+            }
+        }
+    } else {
+        response.reQueueAfter = true
+        response.processFile = false
+     //   return response
+    }
+    if (inputs.preset !== undefined || '')
+        gPreset = ` -u ${inputs.preset}`
+    //End of Rigaya selection
+
+
     // Detect and set up HDR
     if (inputs.use_HDR === true) {
         response.infoLog += `Running HDR detection.\n`
@@ -167,21 +261,21 @@ const plugin = (file, librarySettings, inputs, otherArguments) => {
             cpri = ` --colorprim ` + file.ffProbeData.streams[0].color_primaries
         } else {
             response.infoLog += `HDR detection. Failed (Primaries) \n`
-            hdrWin = 0
+            hdrWin = 1
         }
         // Transfer
         if (file.ffProbeData.streams[0].color_transfer !== undefined) {
             ctrc = ` --transfer ` + file.ffProbeData.streams[0].color_transfer
         } else {
             response.infoLog += `HDR detection. Failed (Transfer) \n`
-            hdrWin = 0
+            hdrWin = 1
         }
         // Color Space
         if (file.ffProbeData.streams[0].color_space !== undefined) {
             cspa = ` --colormatrix ` + file.ffProbeData.streams[0].color_space
         } else {
             response.infoLog += `HDR detection. Failed (Color Space) \n`
-            hdrWin = 0
+            hdrWin = 1
         }
         // MaxCLL MaxFall
         if (file.mediaInfo.track.filter((row) => row['@type'] === 'Video')[0].MaxCLL !== undefined) {
@@ -190,7 +284,7 @@ const plugin = (file, librarySettings, inputs, otherArguments) => {
             contentl = hDRmaxCll + `,` + hDRmaxFALL
         } else {
             response.infoLog += `HDR detection. Failed (MaxCLL MaxFall) \n`
-            hdrWin = 0
+            hdrWin = 1
         }
         // HDR Color
         if (file.mediaInfo.track.filter((row) => row['@type'] === 'Video')[0].MasteringDisplay_ColorPrimaries !== undefined) {
@@ -204,19 +298,19 @@ const plugin = (file, librarySettings, inputs, otherArguments) => {
                 masDC = ` --master-display \"G(13250,13250)B(7500,3000)R(34000,16000)WP(16084,16883.5)L(10000000,1)\" --max-cll \"${contentl}\"`
             } else {
                 response.infoLog += `HDR detection. Failed (HDR Color) \n`
-                hdrWin = 0
+                hdrWin = 1
             }
         }
-        if ((inputs.stopHDRfail === true) && (hdrWin == 0)) {
+        if ((inputs.stopHDRfail === true) && (hdrWin == 1)) {
             response.infoLog += `HDR failed STOP \n`
             response.processFile = false
             return response
-        } else if (hdrWin == 0) {
+        } else if (hdrWin == 1) {
             response.infoLog += `HDR not found \n`
         }
     } else {
         response.infoLog += `HDR detection disabled \n`
-        hdrWin = 0
+        hdrWin = 1
     }
     // End of HDR detection and setup
 
@@ -236,7 +330,9 @@ const plugin = (file, librarySettings, inputs, otherArguments) => {
     response.infoLog += `☑File is ${file.video_resolution}, using a quality value of ` + qual + `.\n`
     response.infoLog += `☑File is being transcoded!\n Tddar will not report progress. Look for the page icon \n`
     response.processFile = true
-    response.preset = `--avhw <io> --video-metadata copy  --metadata copy --chapter-copy --audio-copy --sub-copy -c av1 --cqp ${qual} --quality ${inputs.preset}${cspa}${ctrc}${cpri}${masDC}${pixBit} --chromaloc auto --colorrange auto`
+    response.handBrakeMode = true
+    response.preset = `--avhw --video-metadata copy --metadata copy --chapter-copy -c ${inputs.codec} ${qualSet} ${qual}${cspa}${ctrc}${cpri}${masDC}${pixBit} --chromaloc auto --colorrange auto --audio-copy --sub-copy`
+    response.reQueueAfter = true
     return response
 
 
